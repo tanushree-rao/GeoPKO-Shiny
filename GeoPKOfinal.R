@@ -22,7 +22,7 @@ GeoPKO$RPF_No<-as.numeric(GeoPKO$RPF_No)
 GeoPKO$UNPOL<-as.numeric(GeoPKO$UNPOL.dummy)
 GeoPKO$UNMO<-as.numeric(GeoPKO$UNMO.dummy)
 GeoPKO$No.TCC<-as.numeric(GeoPKO$No.TCC)
-GeoPKO$Av<- (GeoPKO$Avia + GeoPKO$HeSup)
+GeoPKO$Av<- (GeoPKO$Avia + GeoPKO$HeSup) ####Combine helicopter and aviation into av variable (dummies)
 
 HQicon <- awesomeIcons(
   icon = 'fas fa-home',
