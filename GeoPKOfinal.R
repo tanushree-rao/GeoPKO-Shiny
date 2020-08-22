@@ -2,6 +2,7 @@
 #if(!require(leaflet)) install.packages("leaflet", repos = "http://cran.us.r-project.org")
 #if(!require(shiny)) install.packages("shiny", repos = "http://cran.us.r-project.org")
 #if(!require(readxl)) install.packages("readxl", repos = "http://cran.us.r-project.org")
+#install.packages("plotly")
 library(leaflet)
 library(shiny)
 library(dplyr)
@@ -11,6 +12,7 @@ library(shinyWidgets)
 library(RColorBrewer)
 library(forcats)
 library(sp)
+library(plotly)
 
 #Basic Data modification
 GeoPKO <- Almostfinal
@@ -65,8 +67,9 @@ Years <- Years %>% group_by(Mission, Location)%>% summarize(start_date=min(Year)
 
 gif_df <- GeoPKO %>% select(Mission, Year, Country, Location, Latitude, Longitude, NoTroops, HQ, UNPOL, Med,Av,UNMO, No.TCC, nameoftcc_1, nameoftcc_2, nameoftcc_3, nameoftcc_4, nameoftcc_5, nameoftcc_6, nameoftcc_7, nameoftcc_8, nameoftcc_9, nameoftcc_10, nameoftcc_11, nameoftcc_12, nameoftcc_13, nameoftcc_14,nameoftcc_15,nameoftcc_16,nameoftcc_17) %>%
   group_by(Mission, Year, Location, Country) %>%
-  mutate(ave.no.troops = as.integer(mean(NoTroops, na.rm=TRUE))) %>% select(-NoTroops) %>% distinct() %>% drop_na(ave.no.troops)
+  mutate(ave.no.troops = as.integer(mean(NoTroops, na.rm=TRUE))) %>%  select(-NoTroops) %>% distinct() %>% drop_na(ave.no.troops)
 
+gif_df$nameoftcc_1 <- str_replace_all(gif_df$nameoftcc_1, "NA", "")
 gif_df$nameoftcc_2 <- str_replace_all(gif_df$nameoftcc_2, "NA", "")
 gif_df$nameoftcc_3 <- str_replace_all(gif_df$nameoftcc_3, "NA", "")
 gif_df$nameoftcc_4 <- str_replace_all(gif_df$nameoftcc_4, "NA", "")
@@ -85,6 +88,7 @@ gif_df$nameoftcc_16 <- str_replace_all(gif_df$nameoftcc_16, "NA", "")
 gif_df$nameoftcc_17 <- str_replace_all(gif_df$nameoftcc_17, "NA", "")
 
 qpal <- colorNumeric(c("#ffc100", "#ff9a00", "#ff7400", "#ff4d00","#dc6900","#e0301e","#a32020", "#602320", "#451d1b", "#060606"), gif_df$ave.no.troops)
+qpal2 <- colorNumeric(c("#ffc100", "#ff9a00", "#ff7400", "#ff4d00","#dc6900","#e0301e","#a32020", "#602320", "#451d1b", "#060606"), gif_df$No.TCC)
 
 ####UI###
 ui <- fluidPage(
@@ -92,7 +96,7 @@ ui <- fluidPage(
               tabPanel ("Mapper", leafletOutput("basemap", height=850),
                         absolutePanel(top = 70, left = 80,width = 300, style = "background:rgba(255, 224, 189, 0.5)",
                                       span(tags$i(h6("The Geo-PKO dataset provides data on UN peacekeeping deployments. It offers information on key attributes of peacekeeping deployments at the local level, including location, size, troop type, headquarters, troop-contributing countries and other variables. This visualization is based on GeoPKO 2.0.")), style="color:#15110d"),
-                                      span(tags$i(h6("Users can select different variables included in the GeoPKO 2.0 dataset in the right corner. Troop deployment is averaged per year. When selecting Troop contributing countries (TCC) the TCCs are shown in the label. All other variables are dichotomous and thus only indicate its presence. ´Aviation´ includes helicopter units and aviation in general")), style="color:#15110d"),
+                                      span(tags$i(h6("Users can select different variables included in the GeoPKO 2.0 dataset in the right corner. Troop deployment is averaged per year. When selecting Troop contributing countries (TCC) the TCCs are shown in the label. All other variables are dichotomous and when selected only show indicate the presence of such units. ´Aviation´ includes both the variable of Helicopter Support(HeSup) and Aviation")), style="color:#15110d"),
                                       span(h5(tags$b(textOutput("reactive_year"), align = "Left"), style="color:#15110d")),
                                       span(h4(textOutput("reactive_troopcount"), align = "center"), style="color:#15110d"),
                                       span(h6(textOutput("reactive_UNPOLcount"), align = "right"), style="color:#527bd2"),
@@ -115,7 +119,8 @@ ui <- fluidPage(
                             sidebarPanel(
                               p("What locations had Peacekeepers when? Select the options below to visualize."),
                               selectInput(inputId="Lollipop_map", label="Select a mission",
-                                          choices=factor(Years$Mission), width=150)
+                                          choices=factor(Years$Mission), width=150), width= 2,
+                              p("The lollipop graphs show per mission the years in which a location had active deployment of peacekeepers.")
                             ),
                             mainPanel(fluid=TRUE,
                                       plotOutput("lollipop"))
@@ -172,7 +177,8 @@ server <- function(input, output, session){
       hideGroup(c("Medical units","Aviation", "UNPOL", "UNMO", "Mission HQ"))  %>%
       fitBounds(~-70,-50,~60,60) %>%
       setMaxBounds(~-70,-50,~60,60)%>%
-      addLegend(pal = qpal, values = ~gif_df$ave.no.troops, group = "Troop deployment", title= "Legend", layerId = "legend")
+      addLegend(pal = qpal, values = ~gif_df$ave.no.troops, group = "Troop deployment", title= "Legend Troop deployment") %>%
+      addLegend(pal = qpal2, values = ~gif_df$No.TCC, group = "TCC", title= "Legend TCC")
   })
   
   output$reactive_year <- renderText({
@@ -207,9 +213,9 @@ server <- function(input, output, session){
                        label=paste("<strong>UNMO <br/>Mission:</strong>", filteredData4$Mission,"<br/><strong>Location:</strong>",filteredData4$Location)%>% lapply(htmltools::HTML))%>%
       addAwesomeMarkers(data = (filteredData5<-filteredData()%>%filter(HQ==3)), lat = ~Latitude, lng = ~Longitude, icon = HQicon, group = "Mission HQ", 
                        label=paste("<strong>Mission HQ:</strong>", filteredData5$Mission,"<br/><strong>Location:</strong>",filteredData5$Location)%>% lapply(htmltools::HTML))%>%
-      addAwesomeMarkers(data = (filteredData22<-filteredData()%>%filter(Med==1)), lat = ~Latitude, lng = ~Longitude, icon = Medicon, group = "Medical units", 
+      addAwesomeMarkers(data = (filteredData22<-filteredData()%>%filter(Med==1)), lat = ~Latitude, lng = ~Longitude, icon = Medicon, group = "Medical units",
                         label=paste("<strong>Mission:</strong>", filteredData22$Mission,"<br/><strong>Location:</strong>",filteredData22$Location)%>% lapply(htmltools::HTML))%>%
-      addAwesomeMarkers(data = (filteredData23<-filteredData()%>%filter(Av==1)), lat = ~Latitude, lng = ~Longitude, icon = Avicon, group = "Aviation", 
+      addAwesomeMarkers(data = (filteredData23<-filteredData()%>%filter(Av>0)), lat = ~Latitude, lng = ~Longitude, icon = Avicon, group = "Aviation", 
                         label=paste("<strong>Mission:</strong>", filteredData23$Mission,"<br/><strong>Location:</strong>",filteredData23$Location)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData6<-filteredData()%>%filter(No.TCC==2)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
                      fillOpacity = 0.8, color = "#b11226", group = "TCC", 
@@ -280,12 +286,12 @@ server <- function(input, output, session){
               panel.grid.minor.x = element_blank(),
               panel.spacing.x = unit(1,"lines")
         ) +
-        xlab("Included timeframe") +
+        xlab("Years") +
         ylab("Location")+
         labs(title=paste("Ocupation of Locations in", sfdf2()$Mission), 
              caption="Data from GeoPKO 2.0")
       lolli
-  }, height = 800, width = 1000)
+  }, height = 1000)
      })
   
 }
