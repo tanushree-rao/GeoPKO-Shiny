@@ -22,7 +22,7 @@ GeoPKO$RPF_No<-as.numeric(GeoPKO$RPF_No)
 GeoPKO$UNPOL<-as.numeric(GeoPKO$UNPOL.dummy)
 GeoPKO$UNMO<-as.numeric(GeoPKO$UNMO.dummy)
 GeoPKO$No.TCC<-as.numeric(GeoPKO$No.TCC)
-GeoPKO$Av<- (GeoPKO$Avia + GeoPKO$HeSup) ####Combine helicopter and aviation into av variable (dummies)
+GeoPKO$Av<- (GeoPKO$Avia + GeoPKO$HeSup)
 
 HQicon <- awesomeIcons(
   icon = 'fas fa-home',
@@ -51,7 +51,6 @@ UNMOicon <- awesomeIcons(
   library = 'fa'
 )
 
-
 Avicon <- awesomeIcons(
   icon = 'fas fa-plane',
   markerColor = "green",
@@ -67,7 +66,8 @@ Years <- Years %>% group_by(Mission, Location)%>% summarize(start_date=min(Year)
 
 gif_df <- GeoPKO %>% select(Mission, Year, Country, Location, Latitude, Longitude, NoTroops, HQ, UNPOL, Med,Av,UNMO, No.TCC, nameoftcc_1, nameoftcc_2, nameoftcc_3, nameoftcc_4, nameoftcc_5, nameoftcc_6, nameoftcc_7, nameoftcc_8, nameoftcc_9, nameoftcc_10, nameoftcc_11, nameoftcc_12, nameoftcc_13, nameoftcc_14,nameoftcc_15,nameoftcc_16,nameoftcc_17) %>%
   group_by(Mission, Year, Location, Country) %>%
-  mutate(ave.no.troops = as.integer(mean(NoTroops, na.rm=TRUE))) %>%  select(-NoTroops) %>% distinct() %>% drop_na(ave.no.troops)
+  mutate(ave.no.troops = as.integer(mean(NoTroops, na.rm=TRUE))) %>%
+  mutate(Med = mean(Med, na.rm=TRUE)) %>%   mutate(No.TCC = mean(No.TCC, na.rm=TRUE)) %>% select(-NoTroops) %>% distinct() %>% drop_na(ave.no.troops)
 
 gif_df$nameoftcc_1 <- str_replace_all(gif_df$nameoftcc_1, "NA", "")
 gif_df$nameoftcc_2 <- str_replace_all(gif_df$nameoftcc_2, "NA", "")
@@ -87,6 +87,11 @@ gif_df$nameoftcc_15 <- str_replace_all(gif_df$nameoftcc_15, "NA", "")
 gif_df$nameoftcc_16 <- str_replace_all(gif_df$nameoftcc_16, "NA", "")
 gif_df$nameoftcc_17 <- str_replace_all(gif_df$nameoftcc_17, "NA", "")
 
+####Similar values will be sightly change so labels can appear next to each other
+gif_df$Latitude <- jitter(gif_df$Latitude, factor = 0.00000001)
+gif_df$Longitude <- jitter(gif_df$Longitude, factor = 0.00000001)
+
+###Legende colours
 qpal <- colorNumeric(c("#ffc100", "#ff9a00", "#ff7400", "#ff4d00","#dc6900","#e0301e","#a32020", "#602320", "#451d1b", "#060606"), gif_df$ave.no.troops)
 qpal2 <- colorNumeric(c("#ffc100", "#ff9a00", "#ff7400", "#ff4d00","#dc6900","#e0301e","#a32020", "#602320", "#451d1b", "#060606"), gif_df$No.TCC)
 
@@ -157,14 +162,10 @@ ui <- fluidPage(
 #################Server#####################
 server <- function(input, output, session){
   
-  
-  
 ####LeafletCode  
-  
   filteredData <- reactive({
     gif_df %>% filter(Mission %in% input$missions & Year %in% input$plot_date)
   })
-  
   
   output$basemap <- renderLeaflet({
     leaflet(GeoPKO, options = leafletOptions(minZoom = 2)) %>% 
@@ -296,4 +297,5 @@ server <- function(input, output, session){
   
 }
 
+###Launch the app
 shinyApp(ui, server)
