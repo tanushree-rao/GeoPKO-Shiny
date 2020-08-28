@@ -12,7 +12,7 @@ library(shinyWidgets)
 library(RColorBrewer)
 library(forcats)
 library(sp)
-library(plotly)
+
 
 #Basic Data modification
 GeoPKO <- Almostfinal
@@ -63,11 +63,12 @@ Years <- GeoPKO
 Years <- Years %>% group_by(Mission, Location)%>% summarize(start_date=min(Year), end_date=max(Year))
 
 #Shiny leaflet launch
+GeoPKO$No.TCC <- str_replace_all(GeoPKO$No.TCC, "unknown", "")
 
-gif_df <- GeoPKO %>% select(Mission, Year, Country, Location, Latitude, Longitude, NoTroops, HQ, UNPOL, Med,Av,UNMO, No.TCC, nameoftcc_1, nameoftcc_2, nameoftcc_3, nameoftcc_4, nameoftcc_5, nameoftcc_6, nameoftcc_7, nameoftcc_8, nameoftcc_9, nameoftcc_10, nameoftcc_11, nameoftcc_12, nameoftcc_13, nameoftcc_14,nameoftcc_15,nameoftcc_16,nameoftcc_17) %>%
+gif_df <- GeoPKO %>% select(Mission, Year, Country, Location, Latitude, Longitude, NoTroops, HQ, UNPOL, Med,Av,UNMO, No.TCC,nameoftcc_1, nameoftcc_2, nameoftcc_3, nameoftcc_4, nameoftcc_5, nameoftcc_6, nameoftcc_7, nameoftcc_8, nameoftcc_9, nameoftcc_10, nameoftcc_11, nameoftcc_12, nameoftcc_13, nameoftcc_14,nameoftcc_15,nameoftcc_16,nameoftcc_17) %>%
   group_by(Mission, Year, Location, Country) %>%
   mutate(ave.no.troops = as.integer(mean(NoTroops, na.rm=TRUE))) %>%
-  mutate(Med = mean(Med, na.rm=TRUE)) %>%   mutate(No.TCC = mean(No.TCC, na.rm=TRUE)) %>% select(-NoTroops) %>% distinct() %>% drop_na(ave.no.troops)
+  mutate(Med = max(Med, na.rm=TRUE)) %>% mutate(HQ = max(HQ, na.rm=TRUE)) %>% mutate(Av = max(Av, na.rm=TRUE)) %>% mutate(UNMO = max(UNMO, na.rm=TRUE)) %>%mutate(UNPOL = max(UNPOL, na.rm=TRUE)) %>% mutate(No.TCC = max(No.TCC, na.rm=TRUE)) %>% select(-NoTroops) %>% distinct() %>% drop_na(ave.no.troops)
 
 gif_df$nameoftcc_1 <- str_replace_all(gif_df$nameoftcc_1, "NA", "")
 gif_df$nameoftcc_2 <- str_replace_all(gif_df$nameoftcc_2, "NA", "")
