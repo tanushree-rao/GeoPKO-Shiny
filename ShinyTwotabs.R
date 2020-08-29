@@ -65,12 +65,16 @@ Years <- Years %>% group_by(Mission, Location)%>% summarize(start_date=min(Year)
 #Shiny leaflet launch
 
 gif_df <- GeoPKO %>% select(Mission, Year, Country, Location, Latitude, Longitude, NoTroops, HQ, UNPOL, Med,Av,UNMO) %>%
-  group_by(Mission, Year, Location, Country) %>%
-  mutate(ave.no.troops = as.integer(mean(NoTroops, na.rm=TRUE))) %>% select(-NoTroops) %>% distinct() %>% drop_na(ave.no.troops)
+  group_by(Mission, Year, Location, Country) %>% mutate(Av = max(Av, na.rm=TRUE))%>%mutate(Med = max(Med, na.rm=TRUE))%>%
+  mutate(UNPOL = max(UNPOL, na.rm=TRUE))%>% mutate(UNMO = max(UNMO, na.rm=TRUE))%>% mutate(ave.no.troops = as.integer(mean(NoTroops, na.rm=TRUE))) %>% select(-NoTroops) %>% distinct() %>% drop_na(ave.no.troops)
 
 gif_df2 <- GeoPKO %>% select(Mission, Year, Country, Location, Latitude, Longitude, HQ, No.TCC,nameoftcc_1, nameoftcc_2, nameoftcc_3, nameoftcc_4, nameoftcc_5, nameoftcc_6, nameoftcc_7, nameoftcc_8, nameoftcc_9, nameoftcc_10, nameoftcc_11, nameoftcc_12, nameoftcc_13, nameoftcc_14,nameoftcc_15,nameoftcc_16,nameoftcc_17) %>%
   group_by(Mission, Year, Location, Country) %>%
-  mutate(ave.no.troops = as.integer(max(No.TCC, na.rm=TRUE))) %>% distinct() 
+  mutate(ave.no.troops = as.integer(mean(No.TCC, na.rm=TRUE))) %>% distinct() 
+
+
+gif_df$UNPOL <- str_replace_all(gif_df$UNPOL, "-Inf", "0")
+gif_df$UNPOL <- as.numeric(gif_df$UNPOL)
 
 gif_df2$nameoftcc_1 <- str_replace_all(gif_df2$nameoftcc_1, "NA", "")
 gif_df2$nameoftcc_2 <- str_replace_all(gif_df2$nameoftcc_2, "NA", "")
@@ -91,8 +95,8 @@ gif_df2$nameoftcc_16 <- str_replace_all(gif_df2$nameoftcc_16, "NA", "")
 gif_df2$nameoftcc_17 <- str_replace_all(gif_df2$nameoftcc_17, "NA", "")
 
 ####Similar values will be sightly change so labels can appear next to each other
-gif_df$Latitude <- jitter(gif_df$Latitude, factor = 0.00000001)
-gif_df$Longitude <- jitter(gif_df$Longitude, factor = 0.00000001)
+gif_df$Latitude <- jitter(gif_df$Latitude, factor = 0.00000005)
+gif_df$Longitude <- jitter(gif_df$Longitude, factor = 0.00000005)
 
 ###Legende colours
 qpal <- colorNumeric(c("#ffc100", "#ff9a00", "#ff7400", "#ff4d00","#dc6900","#e0301e","#a32020", "#602320", "#451d1b", "#060606"), gif_df$ave.no.troops)
@@ -102,10 +106,10 @@ qpal2 <- colorNumeric(c("#ffc100", "#ff9a00", "#ff7400", "#ff4d00","#dc6900","#e
 ui <- fluidPage(
   navbarPage ("Exploring GeoPKO",
               tabPanel ("Interactive Maps", 
-                        mainPanel(span(tags$i(h6("Select different variables included in the GeoPKO 2.0 dataset in the right corner. Troop deployment is averaged per year. When selecting Troop contributing countries (TCC) the TCCs are shown in the label. All other variables are dichotomous and when selected only show indicate the presence of such units. ´Aviation´ includes both the variable of Helicopter Support(HeSup) and Aviation.")), style="color:#15110d"),
+                        mainPanel(
                         tabsetPanel(
                           tabPanel("Deployment Map",leafletOutput("basemap", height=500, width = 1200),
-                        absolutePanel(top = 99, left = 85,width = 230, style = "background:rgba(255, 224, 189, 0.5)",
+                        absolutePanel(top = 40, left = 85,width = 230, style = "background:rgba(255, 224, 189, 0.5)",
                                       span(h5(tags$b(textOutput("reactive_year"), align = "Left"), style="color:#15110d")),
                                       span(h4(textOutput("reactive_troopcount"), align = "center"), style="color:#15110d"),
                                       span(h6(textOutput("reactive_UNPOLcount"), align = "right"), style="color:#527bd2"),
@@ -123,7 +127,7 @@ ui <- fluidPage(
                                                   animate = animationOptions(interval = 2000, loop = FALSE))
                                       )),
                             tabPanel("Troop contributing countries Map",leafletOutput("map", height=500, width = 1200),
-                                     absolutePanel(top = 99, left = 85,width = 230, style = "background:rgba(255, 224, 189, 0.5)",
+                                     absolutePanel(top = 40, left = 85,width = 230, style = "background:rgba(255, 224, 189, 0.5)",
                                                    span(h5(tags$b(textOutput("reactive_year2"), align = "Left"), style="color:#15110d")),
                                                    span(h6(textOutput("reactive_TCCcount"), align = "center"), style="color:#15110d"),
                                                    pickerInput("missions2","Select Mission(s)", choices=as.character(unique(gif_df2$Mission)),selected =as.character(unique(gif_df2$Mission)) , options = list(`actions-box` = TRUE),multiple = T),
@@ -138,7 +142,7 @@ ui <- fluidPage(
                                                                sep= "",
                                                                animate = animationOptions(interval = 2000, loop = FALSE))
                                      ))),
-              span(tags$i(h6("Data used by the GeoPKO 2.0 is derived from United Nations (UN) mission deployment maps, UN Secretary-General mission progress reports, and the Dag Hammarskjold Library Cartographic Section peacekeeping mission deployment maps. Data inconsistencies maybe due to lack of availability or changed methods of reporting.")), style="color:#15110d")
+                  span(tags$i(h6("Select different variables included in the GeoPKO 2.0 dataset in the right corner. Troop deployment is averaged per year. When selecting Troop contributing countries (TCC) the TCCs are shown in the label. All other variables are dichotomous and when selected only indicate the presence. ´Aviation´ includes both the variable of Helicopter Support(HeSup) and Aviation. Data used by the GeoPKO 2.0 is derived from United Nations (UN) mission deployment maps, UN Secretary-General mission progress reports, and the Dag Hammarskjold Library Cartographic Section peacekeeping mission deployment maps. Data inconsistencies maybe due to lack of availability or changed methods of reporting.")), style="color:#15110d")
               )),
               tabPanel ("Time Maps",
                           sidebarLayout(
@@ -217,7 +221,6 @@ server <- function(input, output, session){
         options = layersControlOptions(collapsed = FALSE)) %>% 
       hideGroup("Mission HQ")%>%
       fitBounds(~-70,-50,~60,60) %>%
-      setMaxBounds(~-70,-50,~60,60)%>%
       addLegend(pal = qpal2, values = ~gif_df2$No.TCC, group = "TCC", title= "Legend")
   })
 
@@ -273,55 +276,55 @@ server <- function(input, output, session){
         clearMarkers() %>%
         clearShapes() %>%
         addCircleMarkers(data = (filteredDataTCC1<-filteredDataTCC()%>%filter(No.TCC==1)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1.5), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredDataTCC1$Location, "<br/><strong>",filteredDataTCC1$No.TCC, " TCC:</strong><br/>", filteredDataTCC1$nameoftcc_1)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredDataTCC2<-filteredDataTCC()%>%filter(No.TCC==2)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                       fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                       fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                        label=paste("<strong>Location:</strong>",filteredDataTCC2$Location, "<br/><strong>",filteredDataTCC2$No.TCC, " TCCs:</strong><br/>", filteredDataTCC2$nameoftcc_1,"<br/>",filteredDataTCC2$nameoftcc_2)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredDataTCC3<-filteredDataTCC()%>%filter(No.TCC==3)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredDataTCC3$Location, "<br/><strong>",filteredDataTCC3$No.TCC, " TCCs:</strong><br/>", filteredDataTCC3$nameoftcc_1,"<br/>",filteredDataTCC3$nameoftcc_2,"<br/>",filteredDataTCC3$nameoftcc_3)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredDataTCC4<-filteredDataTCC()%>%filter(No.TCC==4)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredDataTCC4$Location, "<br/><strong>",filteredDataTCC4$No.TCC, " TCCs:</strong><br/>", filteredDataTCC4$nameoftcc_1,"<br/>",filteredDataTCC4$nameoftcc_2,"<br/>",filteredDataTCC4$nameoftcc_3,"<br/>",filteredDataTCC4$nameoftcc_4)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredDataTCC5<-filteredDataTCC()%>%filter(No.TCC==5)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredDataTCC5$Location, "<br/><strong>",filteredDataTCC5$No.TCC, " TCCs:</strong><br/>", filteredDataTCC5$nameoftcc_1,"<br/>",filteredDataTCC5$nameoftcc_2,"<br/>",filteredDataTCC5$nameoftcc_3,"<br/>",filteredDataTCC5$nameoftcc_4,"<br/>",filteredDataTCC5$nameoftcc_5)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData10<-filteredDataTCC()%>%filter(No.TCC==6)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData10$Location, "<br/><strong>",filteredData10$No.TCC, " TCCs:</strong><br/>", filteredData10$nameoftcc_1,"<br/>",filteredData10$nameoftcc_2,"<br/>",filteredData10$nameoftcc_3,"<br/>",filteredData10$nameoftcc_4,"<br/>",filteredData10$nameoftcc_5,"<br/>",filteredData10$nameoftcc_6)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData11<-filteredDataTCC()%>%filter(No.TCC==7)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData11$Location, "<br/><strong>",filteredData11$No.TCC, " TCCs:</strong><br/>", filteredData11$nameoftcc_1,"<br/>",filteredData11$nameoftcc_2,"<br/>",filteredData11$nameoftcc_3,"<br/>",filteredData11$nameoftcc_4,"<br/>",filteredData11$nameoftcc_5,"<br/>",filteredData11$nameoftcc_6,"<br/>",filteredData11$nameoftcc_7)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData12<-filteredDataTCC()%>%filter(No.TCC==8)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData12$Location, "<br/><strong>",filteredData12$No.TCC, " TCCs:</strong><br/>", filteredData12$nameoftcc_1,"<br/>",filteredData12$nameoftcc_2,"<br/>",filteredData12$nameoftcc_3,"<br/>",filteredData12$nameoftcc_4,"<br/>",filteredData12$nameoftcc_5,"<br/>",filteredData12$nameoftcc_6,"<br/>",filteredData12$nameoftcc_7,"<br/>",filteredData12$nameoftcc_8)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData13<-filteredDataTCC()%>%filter(No.TCC==9)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData13$Location, "<br/><strong>",filteredData13$No.TCC, " TCCs:</strong><br/>", filteredData13$nameoftcc_1,"<br/>",filteredData13$nameoftcc_2,"<br/>",filteredData13$nameoftcc_3,"<br/>",filteredData13$nameoftcc_4,"<br/>",filteredData13$nameoftcc_5,"<br/>",filteredData13$nameoftcc_6,"<br/>",filteredData13$nameoftcc_7,"<br/>",filteredData13$nameoftcc_8,"<br/>",filteredData13$nameoftcc_9)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData14<-filteredDataTCC()%>%filter(No.TCC==10)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData14$Location, "<br/><strong>",filteredData14$No.TCC, " TCCs:</strong><br/>", filteredData14$nameoftcc_1,"<br/>",filteredData14$nameoftcc_2,"<br/>",filteredData14$nameoftcc_3,"<br/>",filteredData14$nameoftcc_4,"<br/>",filteredData14$nameoftcc_5,"<br/>",filteredData14$nameoftcc_6,"<br/>",filteredData14$nameoftcc_7,"<br/>",filteredData14$nameoftcc_8,"<br/>",filteredData14$nameoftcc_9,"<br/>",filteredData14$nameoftcc_10)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData15<-filteredDataTCC()%>%filter(No.TCC==11)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData15$Location, "<br/><strong>",filteredData15$No.TCC, " TCCs:</strong><br/>", filteredData15$nameoftcc_1,"<br/>",filteredData15$nameoftcc_2,"<br/>",filteredData15$nameoftcc_3,"<br/>",filteredData15$nameoftcc_4,"<br/>",filteredData15$nameoftcc_5,"<br/>",filteredData15$nameoftcc_6,"<br/>",filteredData15$nameoftcc_7,"<br/>",filteredData15$nameoftcc_8,"<br/>",filteredData15$nameoftcc_9,"<br/>",filteredData15$nameoftcc_10,"<br/>",filteredData15$nameoftcc_11)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData16<-filteredDataTCC()%>%filter(No.TCC==12)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData16$Location, "<br/><strong>",filteredData16$No.TCC, " TCCs:</strong><br/>", filteredData16$nameoftcc_1,"<br/>",filteredData16$nameoftcc_2,"<br/>",filteredData16$nameoftcc_3,"<br/>",filteredData16$nameoftcc_4,"<br/>",filteredData16$nameoftcc_5,"<br/>",filteredData16$nameoftcc_6,"<br/>",filteredData16$nameoftcc_7,"<br/>",filteredData16$nameoftcc_8,"<br/>",filteredData16$nameoftcc_9,"<br/>",filteredData16$nameoftcc_10,"<br/>",filteredData16$nameoftcc_11,"<br/>",filteredData16$nameoftcc_12)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData17<-filteredDataTCC()%>%filter(No.TCC==13)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData17$Location, "<br/><strong>",filteredData17$No.TCC, " TCCs:</strong><br/>", filteredData17$nameoftcc_1,"<br/>",filteredData17$nameoftcc_2,"<br/>",filteredData17$nameoftcc_3,"<br/>",filteredData17$nameoftcc_4,"<br/>",filteredData17$nameoftcc_5,"<br/>",filteredData17$nameoftcc_6,"<br/>",filteredData17$nameoftcc_7,"<br/>",filteredData17$nameoftcc_8,"<br/>",filteredData17$nameoftcc_9,"<br/>",filteredData17$nameoftcc_10,"<br/>",filteredData17$nameoftcc_11,"<br/>",filteredData17$nameoftcc_12,"<br/>",filteredData17$nameoftcc_13)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData18<-filteredDataTCC()%>%filter(No.TCC==14)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData18$Location, "<br/><strong>",filteredData18$No.TCC, " TCCs:</strong><br/>", filteredData18$nameoftcc_1,"<br/>",filteredData18$nameoftcc_2,"<br/>",filteredData18$nameoftcc_3,"<br/>",filteredData18$nameoftcc_4,"<br/>",filteredData18$nameoftcc_5,"<br/>",filteredData18$nameoftcc_6,"<br/>",filteredData18$nameoftcc_7,"<br/>",filteredData18$nameoftcc_8,"<br/>",filteredData18$nameoftcc_9,"<br/>",filteredData18$nameoftcc_10,"<br/>",filteredData18$nameoftcc_11,"<br/>",filteredData18$nameoftcc_12,"<br/>",filteredData18$nameoftcc_13,"<br/>",filteredData18$nameoftcc_14)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData19<-filteredDataTCC()%>%filter(No.TCC==15)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData19$Location, "<br/><strong>",filteredData19$No.TCC, " TCCs:</strong><br/>", filteredData19$nameoftcc_1,"<br/>",filteredData19$nameoftcc_2,"<br/>",filteredData19$nameoftcc_3, "<br/>",filteredData19$nameoftcc_4,"<br/>",filteredData19$nameoftcc_5,"<br/>",filteredData19$nameoftcc_6,"<br/>",filteredData19$nameoftcc_7,"<br/>",filteredData19$nameoftcc_8,"<br/>",filteredData19$nameoftcc_9,"<br/>",filteredData19$nameoftcc_10,"<br/>",filteredData19$nameoftcc_11,"<br/>",filteredData19$nameoftcc_12,"<br/>",filteredData19$nameoftcc_13,"<br/>",filteredData19$nameoftcc_14, "<br/>",filteredData19$nameoftcc_15)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData20<-filteredDataTCC()%>%filter(No.TCC==16)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData20$Location, "<br/><strong>",filteredData20$No.TCC, " TCCs:</strong><br/>", filteredData20$nameoftcc_1,"<br/>",filteredData20$nameoftcc_2,"<br/>",filteredData20$nameoftcc_3, "<br/>",filteredData20$nameoftcc_4,"<br/>",filteredData20$nameoftcc_5,"<br/>",filteredData20$nameoftcc_6,"<br/>",filteredData20$nameoftcc_7,"<br/>",filteredData20$nameoftcc_8,"<br/>",filteredData20$nameoftcc_9,"<br/>",filteredData20$nameoftcc_10,"<br/>",filteredData20$nameoftcc_11,"<br/>",filteredData20$nameoftcc_12,"<br/>",filteredData20$nameoftcc_13,"<br/>",filteredData20$nameoftcc_14, "<br/>",filteredData20$nameoftcc_15,"<br/>",filteredData20$nameoftcc_16)%>% lapply(htmltools::HTML))%>%
         addCircleMarkers(data = (filteredData21<-filteredDataTCC()%>%filter(No.TCC==17)), lat = ~Latitude, lng = ~Longitude, weight = 1, radius = ~(No.TCC)*(1), 
-                         fillOpacity = 0.8, color = "#b11226", group = "TCC", 
+                         fillOpacity = 0.8, color = ~qpal2(No.TCC), group = "TCC", 
                          label=paste("<strong>Location:</strong>",filteredData21$Location, "<br/><strong>",filteredData21$No.TCC, " TCCs:</strong><br/>", filteredData21$nameoftcc_1,"<br/>",filteredData21$nameoftcc_2,"<br/>",filteredData21$nameoftcc_3, "<br/>",filteredData21$nameoftcc_4,"<br/>",filteredData21$nameoftcc_5,"<br/>",filteredData21$nameoftcc_6,"<br/>",filteredData21$nameoftcc_7,"<br/>",filteredData21$nameoftcc_8,"<br/>",filteredData21$nameoftcc_9,"<br/>",filteredData21$nameoftcc_10,"<br/>",filteredData21$nameoftcc_11,"<br/>",filteredData21$nameoftcc_12,"<br/>",filteredData21$nameoftcc_13,"<br/>",filteredData21$nameoftcc_14, "<br/>",filteredData21$nameoftcc_15,"<br/>",filteredData21$nameoftcc_16,"<br/>",filteredData21$nameoftcc_17)%>% lapply(htmltools::HTML))
       
     })
